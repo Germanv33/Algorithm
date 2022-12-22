@@ -26,6 +26,7 @@ encoded_msg , interval_min_value, interval_max_value = AE.encode(msg=original_ms
                                                                           probability_table=AE.probability_table)
 
 print("Encoded Message: {msg}".format(msg=encoded_msg))
+print(len(original_msg))
 
 def encode_binary(text: str) -> str:
     return ' '.join(format(ord(x), 'b') for x in text)

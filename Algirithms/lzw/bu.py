@@ -1,55 +1,61 @@
 #! /usr/bin/env python
 import argparse
+import json
+from operator import itemgetter
 
+def bw_restore(I, L):
+    n = len(L)
+    X = sorted([(i, x) for i, x in enumerate(L)], key=itemgetter(1))
 
-def ibwt(r):
-    """Apply inverse Burrows-Wheeler transform."""
-    table = [""] * len(r)  # Make empty table
-    for i in range(len(r)):
-        table = sorted(r[i] + table[i] for i in range(len(r)))  # Add a column of r
-    s = [row for row in table if row.endswith("\003")][0]  # Find the correct row (ending in ETX)
-    return s.rstrip("\003").strip("\002")  # Get rid of start and end markers
+    T = [None for i in range(n)]
+    for i, y in enumerate(X):
+        j, _ = y
+        T[j] = i
 
+    Tx = [I]
+    for i in range(1, n):
+        Tx.append(T[Tx[i-1]])
 
-def decompress(compressed):
-    """Decompress a list of output ks to a string."""
-    from io import StringIO
+    S = [L[i] for i in Tx]
+    S.reverse()
+    return ''.join(S)
 
-    # Build the dictionary.
-    dict_size = 256
-    dictionary = dict((i, chr(i)) for i in range(dict_size))
-    # in Python 3: dictionary = {i: chr(i) for i in range(dict_size)}
+def lzw_decode(str_to_decode_binary):
+    with open("alphabet.txt", "r") as file:
+        dictionary_reversed = json.loads(file.read())
 
-    # use StringIO, otherwise this becomes O(N^2)
-    # due to string concatenation in a loop
-    result = StringIO()
-    w = chr(compressed.pop(0))
-    result.write(w)
-    for k in compressed:
+    dictionary = {key: value for value, key in dictionary_reversed.items()}
+
+    list_to_decode = list(map(lambda x: int(x, 2), str_to_decode_binary))
+    dict_size = len(dictionary)
+
+    result = ""
+    w = dictionary[list_to_decode.pop(0)]
+    result += w
+    for k in list_to_decode:
         if k in dictionary:
             entry = dictionary[k]
-        elif k == dict_size:
-            entry = w + w[0]
         else:
-            raise ValueError('Bad compressed k: %s' % k)
-        result.write(entry)
+            entry = w + w[0]
+        result += entry
 
-        # Add w+entry[0] to the dictionary.
         dictionary[dict_size] = w + entry[0]
         dict_size += 1
 
         w = entry
-    return result.getvalue()
+    return result
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description='Decode LZW +  Burrows Wheeler ')
     parser.add_argument('STRING', type=str, help='Decode this string.')
+    parser.add_argument('NUMBER', type=int, help='Original strung number.')
     args = parser.parse_args()
 
-    decompressed = decompress(args.STRING)
-    decoded = ibwt(decompressed)
+    mylist = (args.STRING).split(" ")
 
-
+    decompressed = lzw_decode(mylist)
+    decoded = bw_restore(args.NUMBER ,decompressed)
     print(decoded)
 
